@@ -1,4 +1,5 @@
 from pathlib import Path
+from nodes import LoraLoader
 import folder_paths
 import re
 
@@ -8,7 +9,6 @@ import comfy.utils
 
 class LoraTagLoader:
     def __init__(self):
-        self.loaded_lora = None
         self.tag_pattern = "\<[0-9a-zA-Z\:\_\-\.\s\/\(\)\\\\]+\>"
 
     @classmethod
@@ -16,6 +16,7 @@ class LoraTagLoader:
         return {"required": { "model": ("MODEL",),
                               "clip": ("CLIP", ),
                               "text": ("STRING", {"multiline": True}),
+                              "normalize_weight":   ("FLOAT", {"default":  0, "min": 0, "max": 100.0, "step": 0.1, "round": 0.001}),
                               }}
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "STRING")
@@ -23,7 +24,7 @@ class LoraTagLoader:
 
     CATEGORY = "loaders"
 
-    def load_lora(self, model, clip, text):
+    def load_lora(self, model, clip, text, normalize_weight):
         # print(f"\nLoraTagLoader input text: { text }")
 
         founds = re.findall(self.tag_pattern, text)
@@ -34,6 +35,13 @@ class LoraTagLoader:
 
         model_lora = model
         clip_lora = clip
+        
+        loras = []
+        wModels = []
+        wClips = []
+        
+        max_clip = 0.0
+        max_weight = 0.0
         
         lora_files = folder_paths.get_filename_list("loras")
         for f in founds:
@@ -68,21 +76,23 @@ class LoraTagLoader:
                 continue
             print(f"detected lora tag: { (type, name, wModel, wClip) } >> { lora_name }")
 
-            lora_path = folder_paths.get_full_path("loras", lora_name)
-            lora = None
-            if self.loaded_lora is not None:
-                if self.loaded_lora[0] == lora_path:
-                    lora = self.loaded_lora[1]
-                else:
-                    temp = self.loaded_lora
-                    self.loaded_lora = None
-                    del temp
-
-            if lora is None:
-                lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
-                self.loaded_lora = (lora_path, lora)
-
-            model_lora, clip_lora = comfy.sd.load_lora_for_models(model_lora, clip_lora, lora, wModel, wClip)
+            #lora_path = folder_paths.get_full_path("loras", lora_name)
+            
+            max_clip += abs(wClip)
+            max_weight += abs(wModel)
+            
+            loras.append(lora_name)
+            wModels.append(wModel)
+            wClips.append(wClip)
+            
+        for idx, l in enumerate(loras):
+            if normalize_weight > 0:
+                weight_scale = normalize_weight / max_weight if max_weight > 0 else 1.0
+                clip_scale = normalize_weight / max_clip if max_clip > 0 else 1.0
+            else:
+                weight_scale = 1.0
+                clip_scale = 1.0
+            model_lora, clip_lora = LoraLoader().load_lora(model_lora, clip_lora, l, wModels[idx] * weight_scale, wClips[idx] * clip_scale)
 
         plain_prompt = re.sub(self.tag_pattern, "", text)
         return (model_lora, clip_lora, plain_prompt)
