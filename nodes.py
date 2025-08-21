@@ -75,15 +75,14 @@ class LoraTagLoader:
                 print(f"bypassed lora tag: { (type, name, wModel, wClip) } >> { lora_name }")
                 continue
             print(f"detected lora tag: { (type, name, wModel, wClip) } >> { lora_name }")
-
-            #lora_path = folder_paths.get_full_path("loras", lora_name)
             
-            max_clip += abs(wClip)
-            max_weight += abs(wModel)
-            
-            loras.append(lora_name)
-            wModels.append(wModel)
-            wClips.append(wClip)
+            if wClip > 0 or wModel > 0:
+                max_clip += abs(wClip)
+                max_weight += abs(wModel)
+                
+                loras.append(lora_name)
+                wModels.append(wModel)
+                wClips.append(wClip)
             
         for idx, l in enumerate(loras):
             if normalize_weight > 0:
