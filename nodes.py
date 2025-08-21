@@ -76,7 +76,7 @@ class LoraTagLoader:
                 continue
             print(f"detected lora tag: { (type, name, wModel, wClip) } >> { lora_name }")
             
-            if wClip > 0 or wModel > 0:
+            if wClip != 0 or wModel != 0:
                 max_clip += abs(wClip)
                 max_weight += abs(wModel)
                 
