@@ -16,7 +16,7 @@ class LoraTagLoader:
         return {"required": { "model": ("MODEL",),
                               "clip": ("CLIP", ),
                               "text": ("STRING", {"multiline": True}),
-                              "normalize_weight":   ("FLOAT", {"default":  0, "min": 0, "max": 100.0, "step": 0.1, "round": 0.001}),
+                              "normalize_weight":   ("FLOAT", {"default":  0, "min": 0, "max": 100.0, "step": 0.01, "round": 0.01}),
                               }}
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "STRING")
@@ -74,7 +74,6 @@ class LoraTagLoader:
             if lora_name == None:
                 print(f"bypassed lora tag: { (type, name, wModel, wClip) } >> { lora_name }")
                 continue
-            print(f"detected lora tag: { (type, name, wModel, wClip) } >> { lora_name }")
             
             if wClip != 0 or wModel != 0:
                 max_clip += abs(wClip)
@@ -91,7 +90,10 @@ class LoraTagLoader:
             else:
                 weight_scale = 1.0
                 clip_scale = 1.0
-            model_lora, clip_lora = LoraLoader().load_lora(model_lora, clip_lora, l, wModels[idx] * weight_scale, wClips[idx] * clip_scale)
+            final_weight =  wModels[idx] * weight_scale
+            final_clip = wClips[idx] * clip_scale
+            print(f"Applying LORA tag: { l } weight={ round(final_weight, 3) } clip={ round(final_clip, 3) }")
+            model_lora, clip_lora = LoraLoader().load_lora(model_lora, clip_lora, l, final_weight, final_clip)
 
         plain_prompt = re.sub(self.tag_pattern, "", text)
         return (model_lora, clip_lora, plain_prompt)
